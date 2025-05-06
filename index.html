@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Modelo Secuencial</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest/dist/tf.min.js"></script>
+    <link
+      href="https://cdn.jsdelivr.net/npm/daisyui@5"
+      rel="stylesheet"
+      type="text/css"
+    />
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <style>
+      body {
+        display: flex;
+        flex-direction: column;
+
+        align-items: center;
+        margin-top: 5%;
+        margin-left: 20%;
+        margin-right: 20%;
+        gap: 5px;
+      }
+      input {
+        width: 100px;
+      }
+      h1 {
+        font-weight: bold;
+        font-size: xx-large;
+      }
+      h2 {
+        font-size: large;
+      }
+    </style>
+  </head>
+  <body>
+    <h1 class="">Ejemplo TensorFlow Modelo Secuencial</h1>
+    <h2>Fórmula: y = 2x + 6</h2>
+    <button class="btn" id="train-btn">Entrenar modelo</button>
+    <input type="number" class="input" id="input-number" />
+    <button class="btn" id="predict-btn" disabled>Predecir</button>
+    <div id="output-field"></div>
+  </body>
+  <script>
+    async function learnLinear() {
+      const trainBtn = document.getElementById('train-btn')
+      const inputNumber = document.getElementById('input-number')
+      const predictBtn = document.getElementById('predict-btn')
+      const outputField = document.getElementById('output-field')
+
+      const model = tf.sequential()
+      model.add(tf.layers.dense({ units: 1, inputShape: [1] }))
+
+      model.compile({
+        loss: 'meanSquaredError',
+        optimizer: 'sgd',
+      })
+
+      const xs = tf.tensor2d([-6, -5, -4, -3, -2, -1, 0, 1, 2], [9, 1])
+      const ys = tf.tensor2d([-6, -4, -2, 0, 2, 4, 6, 8, 10], [9, 1])
+
+      trainBtn.addEventListener('click', async () => {
+        outputField.innerText = 'Entrenando...'
+        await model.fit(xs, ys, { epochs: 350 })
+        outputField.innerText = 'Modelo entrenado'
+        predictBtn.disabled = false
+      })
+
+      predictBtn.addEventListener('click', () => {
+        const input = parseFloat(inputNumber.value)
+        if (isNaN(input)) {
+          outputField.innerText = 'Ingresá un número válido.'
+          return
+        }
+        const prediction = model.predict(tf.tensor2d([input], [1, 1]))
+        outputField.innerText = `Resultado: ${prediction.dataSync()[0]}`
+      })
+    }
+    learnLinear()
+  </script>
+</html>
