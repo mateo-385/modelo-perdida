@@ -11,13 +11,14 @@
       type="text/css"
     />
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
       body {
         display: flex;
         flex-direction: column;
 
         align-items: center;
-        margin-top: 5%;
+        margin-top: 2%;
         margin-left: 20%;
         margin-right: 20%;
         gap: 5px;
@@ -38,10 +39,14 @@
     <h1 class="">Ejemplo TensorFlow Modelo Secuencial</h1>
     <h2>Fórmula: y = 2x + 6</h2>
     <button class="btn" id="train-btn">Entrenar modelo</button>
-    <input type="number" class="input" id="input-number" />
-    <button class="btn" id="predict-btn" disabled>Predecir</button>
+    <div class="flex gap-2 mt-5">
+      <input type="text" class="input" id="input-number" />
+      <button class="btn" id="predict-btn" disabled>Predecir</button>
+    </div>
     <div id="output-field"></div>
+    <canvas id="loss-chart" width="300" height="100"></canvas>
   </body>
+  <!-- filepath: c:\Users\IPF\Documents\ipf\seminario-actualizacion\modelo-perdida\index.html -->
   <script>
     async function learnLinear() {
       const trainBtn = document.getElementById('train-btn')
@@ -60,21 +65,88 @@
       const xs = tf.tensor2d([-6, -5, -4, -3, -2, -1, 0, 1, 2], [9, 1])
       const ys = tf.tensor2d([-6, -4, -2, 0, 2, 4, 6, 8, 10], [9, 1])
 
+      // grafico
+      const ctx = document.getElementById('loss-chart').getContext('2d')
+      const lossChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: [], // epocas
+          datasets: [
+            {
+              label: 'Pérdida por época',
+              data: [],
+              borderColor: 'rgba(75, 192, 192, 1)',
+              borderWidth: 2,
+              fill: false,
+            },
+          ],
+        },
+        options: {
+          responsive: true,
+          scales: {
+            x: {
+              title: {
+                display: true,
+                text: 'Épocas',
+              },
+            },
+            y: {
+              title: {
+                display: true,
+                text: 'Pérdida',
+              },
+            },
+          },
+        },
+      })
+
       trainBtn.addEventListener('click', async () => {
+        lossChart.data.labels = []
+        lossChart.data.datasets[0].data = []
+        lossChart.update()
+
         outputField.innerText = 'Entrenando...'
-        await model.fit(xs, ys, { epochs: 350 })
+
+        await model.fit(xs, ys, {
+          epochs: 350,
+          callbacks: {
+            onEpochEnd: (epoch, logs) => {
+              // agregar datos al gráfico
+              if (epoch < 105 && epoch % 5 === 0) {
+                lossChart.data.labels.push(epoch)
+                lossChart.data.datasets[0].data.push(logs.loss)
+                lossChart.update()
+              }
+            },
+          },
+        })
+
         outputField.innerText = 'Modelo entrenado'
         predictBtn.disabled = false
       })
 
       predictBtn.addEventListener('click', () => {
-        const input = parseFloat(inputNumber.value)
-        if (isNaN(input)) {
-          outputField.innerText = 'Ingresá un número válido.'
+        const input = inputNumber.value
+        if (!input) {
+          outputField.innerText =
+            'Ingresá uno o más números válidos separados por comas.'
           return
         }
-        const prediction = model.predict(tf.tensor2d([input], [1, 1]))
-        outputField.innerText = `Resultado: ${prediction.dataSync()[0]}`
+
+        const inputs = input.split(',').map((val) => parseFloat(val.trim()))
+        if (inputs.some(isNaN)) {
+          outputField.innerText =
+            'Ingresá solo números válidos separados por comas.'
+          return
+        }
+
+        const predictions = model.predict(
+          tf.tensor2d(inputs, [inputs.length, 1])
+        )
+        predictions.data().then((data) => {
+          const results = Array.from(data).map((val) => Number(val).toFixed(2))
+          outputField.innerText = `Resultados: ${results.join(', ')}`
+        })
       })
     }
     learnLinear()
